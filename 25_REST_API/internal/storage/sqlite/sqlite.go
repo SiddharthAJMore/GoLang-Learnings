@@ -2,8 +2,10 @@ package sqlite
 
 import (
 	"database/sql"
+	"fmt"
 
 	"github.com/SiddharthAJMore/students-api/internal/config"
+	"github.com/SiddharthAJMore/students-api/internal/types"
 	_ "github.com/mattn/go-sqlite3" // _ nfornt of package is to show that the package is used indirectly/ or requried for initialization
 )
 
@@ -20,8 +22,8 @@ func New(cfg *config.Config) (*SQLite, error) {
 	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS student(
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		name TEXT,
-		age INTEGER,
-		email TEXT
+		email TEXT,
+		age INTEGER
 	)`)
 
 	if err != nil {
@@ -53,4 +55,25 @@ func (s *SQLite) CreateStudent(name string, email string, age int) (int64, error
 	}
 
 	return lastId, nil
+}
+
+func (s *SQLite) GetStudentById(id int64) (types.Student, error) {
+	stmt, err := s.Db.Prepare("SELECT * FROM STUDENT WHERE id=? LIMIT 1")
+	if err != nil {
+		return types.Student{}, err
+	}
+
+	defer stmt.Close()
+
+	var student types.Student
+
+	err = stmt.QueryRow(id).Scan(&student.Id, &student.Name, &student.Email, &student.Age)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return types.Student{}, fmt.Errorf("no student with id %s found", fmt.Sprint(id))
+		}
+		return types.Student{}, fmt.Errorf("query error: %w", err)
+	}
+
+	return student, nil
 }
